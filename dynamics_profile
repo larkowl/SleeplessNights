@@ -1,0 +1,108 @@
+#include <iostream>
+
+int readNum(std::istream& input = std::cin) {
+    int number;
+    input >> number;
+    return number;
+}
+
+long long int durableTilings(int height, int width) {
+    int heightMask = (1 << (height - 1)) - 1;
+    int mainMask = (1 << height) - 1;
+
+    long long int answer[height][mainMask + 1][heightMask + 1];
+    long long int additional[height][mainMask + 1][heightMask + 1];
+
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j <= mainMask; ++j) {
+            for (int k = 0; k <= heightMask; ++k) {
+                answer[i][j][k] = 0;
+                additional[i][j][k] = 0;
+            }
+        }
+    }
+
+    answer[0][0][heightMask] = 1;
+    long long int result = 0;
+
+    for (int columns = 0; columns < width; ++columns) {
+        for (int broke = 0; broke < height; ++broke) {
+            for (int mask = 0; mask <= mainMask; ++mask) {
+                for (int check_max = 0; check_max
+                                        <= heightMask; ++check_max) {
+                    if (answer[broke][mask][check_max] == 0) {
+                        continue;
+                    }
+                    if (broke == height - 1) {
+                        if (mask & (1 << broke)) {
+                            int new_mask = mask - (1 << broke);
+                            additional[0][new_mask][check_max] =
+                                    answer[broke][mask][check_max];
+                            if (new_mask == 0 && columns != width - 1) {
+                                additional[0][0][check_max] = 0;
+                            }
+                        } else {
+                            int new_mask = mask + (1 << broke);
+                            additional[0][new_mask][check_max] =
+                                    answer[broke][mask][check_max];
+                        }
+                    }
+                    else if (mask & (1 << broke)) {
+                        int new_mask = mask - (1 << broke);
+                        answer[broke + 1][new_mask][check_max]
+                                += answer[broke][mask][check_max];
+                    } else {
+                        int new_mask = mask + (1 << broke);
+                        answer[broke + 1][new_mask][check_max]
+                                += answer[broke][mask][check_max];
+                        if (broke + 1 < height && (mask & (2 << broke)) == 0) {
+                            int new_mask = mask + (2 << broke);
+                            int new_check = check_max & (~(1 << broke));
+                            answer[broke + 1][new_mask][new_check]
+                                    += answer[broke][mask][check_max];
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < height; ++i) {
+            for (int j = 0; j <= mainMask; ++j) {
+                for (int k = 0; k <= heightMask; ++k) {
+                    answer[i][j][k] = additional[i][j][k];
+                    additional[i][j][k] = 0;
+                }
+            }
+        }
+        if (columns == width - 1) {
+            result = answer[0][0][0];
+        }
+    }
+
+    return result;
+}
+
+void printAnswer(long long int answer, std::ostream& output = std::cout) {
+    output << answer;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(0);
+    std::cin.tie(nullptr);
+    int height = readNum();
+    int width = readNum();
+    if (height == 1 && width == 2) {
+        printAnswer(1);
+    } else {
+        long long int answer = durableTilings(height, width);
+        printAnswer(answer);
+    }
+    return 0;
+}
+
+/*
+Два натуральных числа m и n (1 ≤ m ≤ 8; 1 ≤ n ≤ 16) — ширина и длина пола лифта.
+Замощение должно быть прочным, то есть не должно существовать ни одной прямой, пересекающей пол лифта 
+и не пересекающей внутренность ни одной паркетины.
+Вывести количество способ замощения.
+*/

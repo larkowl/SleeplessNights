@@ -1,0 +1,108 @@
+#include <iostream>
+#include <vector>
+#include <math.h>
+
+std::istream& input = std::cin;
+std::ostream& output = std::cout;
+double maxDouble = 1.79769e+308;
+
+int binPow(int number, int pow) {
+    int res = 1;
+    for (;pow > 0;) {
+        if (pow & 1) {
+            res *= number;
+            --pow;
+        } else {
+            number *= number;
+            pow >>= 1;
+        }
+    }
+    return res;
+}
+
+std::vector<std::vector<double>> fullGraphBuilding(int vertexCount) {
+
+    std::vector<std::pair<int,int>> vertices(vertexCount);
+    for (int i = 0; i < vertexCount; ++i) {
+        int coorX, coorY;
+        input >> coorX >> coorY;
+        vertices[i] = std::make_pair(coorX, coorY);
+    }
+
+    std::vector<std::vector<double>> matrix (vertexCount,
+            std::vector<double> (vertexCount));
+    for (int i = 0; i < vertexCount; ++i) {
+        for (int j = 0; j < vertexCount; ++j) {
+            double first = pow(vertices[i].first - vertices[j].first, 2);
+            double second = pow(vertices[i].second - vertices[j].second, 2);
+            double line = sqrt(first + second);
+            matrix[i][j] = line;
+            matrix[j][i] = line;
+        }
+    }
+
+    return matrix;
+}
+
+void travelingSalesman(int start, std::vector<double>& answer,
+        const std::vector<std::vector<double>>& matrix) {
+    int maxMask = binPow(2, start + 1);
+    std::vector<std::vector<double>> dp(start + 1);
+    for(int i = 0; i <= start; ++i) {
+        dp[i].resize(maxMask, maxDouble);
+    }
+    dp[start][maxMask / 2] = 0;
+    for (int mask = 0; mask < maxMask; ++mask) {
+        for (int last = 0; last <= start; ++last) {
+            for (int next = 0; next <= start; ++next) {
+                if (!((mask >> next) & 1)) {
+                    int next_mask = mask + binPow(2, next);
+                    if (dp[last][mask] + matrix[last][next] < dp[next][next_mask]) {
+                        dp[next][next_mask] = dp[last][mask] + matrix[last][next];
+                    }
+                }
+            }
+            if (dp[last][mask] + matrix[last][start] < answer[mask]) {
+                answer[mask] = dp[last][mask] + matrix[last][start];
+            }
+        }
+    }
+}
+
+double printAnswer(const std::vector<double>& answer) {
+    int points;
+    input >> points;
+    int set = 0;
+    for (int j = 0; j < points; ++j) {
+        int vertex;
+        input >> vertex;
+        set += binPow(2, vertex - 1);
+    }
+    return answer[set];
+}
+
+void Solving(int vertexCount) {
+
+    std::vector<std::vector<double>> matrix = fullGraphBuilding(vertexCount);
+    std::vector<double> answer(1 << vertexCount, maxDouble);
+    answer[0] = 0;
+    for (int start = vertexCount - 1; start >= 0; --start) {
+        travelingSalesman(start, answer, matrix);
+    }
+    int requests;
+    input >> requests;
+    for (int i = 0; i < requests; ++i) {
+        output << printAnswer(answer) << std::endl;
+    }
+}
+
+int main() {
+    output << std::fixed;
+    output.precision(3);
+    std::ios_base::sync_with_stdio(0);
+    input.tie(nullptr);
+    int vertexCount;
+    input >> vertexCount;
+    Solving(vertexCount);
+    return 0;
+}

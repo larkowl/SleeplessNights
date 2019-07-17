@@ -1,0 +1,109 @@
+#include<iostream>
+#include <algorithm>
+#include <utility>
+#include <vector>
+
+std::istream& input = std::cin;
+std::ostream& output = std::cout;
+
+class Node {
+public:
+    int value;
+    int size;
+    int priority;
+    Node* left;
+    Node* right;
+    explicit Node(int value);
+    void update_size();
+};
+
+Node::Node(int value) {
+    this->value = value;
+    size = 1;
+    priority = std::rand();
+    left = right = nullptr;
+}
+
+void Node::update_size() {
+    this->size = 1;
+    this->size += !left ? 0 : left->size;
+    this->size += !right ? 0 : right->size;
+}
+
+Node* merge(Node* first, Node* second) {
+    if (!first) {
+        return second;
+    }
+    if (!second) {
+        return first;
+    }
+    if (first->priority > second->priority) {
+        first->right = merge(first->right, second);
+        first->update_size();
+        return first;
+    } else {
+        second->left = merge(first, second->left);
+        second->update_size();
+        return second;
+    }
+}
+
+std::pair<Node*, Node*> split_sec(Node* tree, int position) {
+    std::pair<Node*, Node*> para, para_temp;
+    if (!tree) {
+        return std::make_pair(nullptr, nullptr);
+    }
+    int left_size = !tree->left ? 0 : tree->left->size;
+    if (left_size < position) {
+        position = position - 1 - left_size;
+        para_temp = split_sec(tree->right, position);
+        tree->right = para_temp.first;
+        para = std::make_pair(tree, para_temp.second);
+    } else {
+        para_temp = split_sec(tree->left, position);
+        tree->left = para_temp.second;
+        para = std::make_pair(para_temp.first, tree);
+    }
+    tree->update_size();
+    return para;
+}
+
+Node* build(int size) {
+
+    Node* tree = nullptr;
+    for (int i = 0; i < size; ++i) {
+        tree = merge(tree, new Node(i));
+    }
+    return tree;
+}
+
+Node* pass(Node* tree, int left, int right) {
+
+    std::pair<Node*, Node*> para_first = split_sec(tree, right);
+    std::pair<Node*, Node*> para_second = split_sec(para_first.first, left - 1);
+    return merge(merge(para_second.second, para_second.first), para_first.second);
+}
+
+void output_tree(Node* tree) {
+    if (tree) {
+        output_tree(tree->left);
+        output << tree->value + 1 << ' ';
+        output_tree(tree->right);
+    }
+}
+
+int main()
+{
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    int size, queries;
+    input >> size >> queries;
+    Node* tree = build(size);
+    for (int query = 0; query < queries; ++query) {
+        int left, right;
+        input >> left >> right;
+        tree = pass(tree, left, right);
+    }
+    output_tree(tree);
+    return 0;
+}

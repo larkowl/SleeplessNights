@@ -1,0 +1,235 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <string>
+#include <utility>
+
+std::istream& input = std::cin;
+std::ostream& output = std::cout;
+
+const int MOD = 1000000000 + 7;
+int queries_count, query;
+
+struct Node {
+    int size = 1;
+    int value;
+    int sum;
+    int priority = rand();
+    Node* left = nullptr;
+    Node* right = nullptr;
+    explicit Node(int value) : value(value), sum(value) { }
+};
+
+Node* temp = nullptr;
+
+int get_max_size() {
+    return queries_count;
+}
+
+int get_size(Node* root) {
+    return !root ? 0 : root->size;
+}
+
+int get_sum(Node* root) {
+    return !root ? 0 : root->sum;
+}
+
+int get_value(Node* root) {
+    return !root ? 0 : root->value;
+}
+
+Node* get_copy(Node* root) {
+    if (!root) {
+        return nullptr;
+    }
+    Node* res = new Node(root->value);
+    res->size = root->size;
+    res->sum = root->sum;
+    res->priority = root->priority;
+    res->left = root->left;
+    res->right = root->right;
+    return res;
+}
+
+void update(Node* res) {
+    if (!res) {
+        return;
+    }
+    res->size = 1;
+    res->size += get_size(res->left);
+    res->size += get_size(res->right);
+}
+
+std::pair<Node*, Node*> split(Node* root, int position) {
+    std::pair<Node*, Node*> para, para_temp;
+    if (!root) {
+        return std::make_pair(nullptr, nullptr);
+    }
+    Node* current = get_copy(root);
+    if (get_size(root->left) < position) {
+        position = position - 1 - get_size(current->left);
+        para_temp = split(current->right, position);
+        current->right = para_temp.first;
+        para = std::make_pair(current, para_temp.second);
+    } else {
+        para_temp = split(current->left, position);
+        current->left = para_temp.second;
+        para = std::make_pair(para_temp.first, current);
+    }
+    update(current);
+    return para;
+}
+
+Node* merge(Node* first, Node* second) {
+    Node* res;
+    if (!first) {
+        return get_copy(second);
+    }
+    if (!second) {
+        return get_copy(first);
+    }
+    int sum = (get_sum(first) + get_sum(second)) % MOD;
+    if (first->priority > second->priority) {
+        res = get_copy(first);
+        res->right = merge(first->right, second);
+    } else {
+        res = get_copy(second);
+        res->left = merge(first, second->left);
+    }
+    res->sum = sum;
+    update(res);
+    return res;
+}
+
+Node* check_merge(Node* first, Node* second) {
+    int first_sum = get_sum(first);
+    int second_sum = get_sum(second);
+    first = first->left;
+    second = second->left;
+    if (get_size(first) > get_max_size() && get_size(second) > get_max_size()) {
+        std::pair<Node*, Node*> para_first = split(first, get_max_size());
+        std::pair<Node*, Node*> para_second = split(second, get_max_size());
+        first = para_first.first;
+        second = para_second.second;
+    } else if (get_size(first) > get_max_size()) {
+        std::pair<Node*, Node*> para_first = split(first, get_max_size());
+        std::pair<Node*, Node*> para_second = split(first, get_size(first) - get_max_size());
+        first = merge(para_first.first, para_second.second);
+    } else if (get_size(second) > get_max_size()) {
+        std::pair<Node*, Node*> para_first = split(second, get_max_size());
+        std::pair<Node*, Node*> para_second = split(second, get_size(second) - get_max_size());
+        second = merge(para_first.first, para_second.second);
+    }
+    Node* res = merge(first, second);
+    Node* res_root = new Node(0);
+    res_root->sum = (first_sum + second_sum) % MOD;
+    res_root->left = res;
+    return res_root;
+}
+
+void mergeQuery(std::vector<Node*>& versions, int version) {
+    int with_version;
+    input >> with_version;
+    Node* res = check_merge(versions[version - 1], versions[with_version - 1]);
+    versions.push_back(res);
+    output << get_sum(res) << std::endl;
+}
+
+Node* get_head(Node* root) {
+    if (!root->left) {
+        temp = get_copy(root);
+        temp->right = nullptr;
+        temp->left = new Node(get_value(temp));
+        temp->sum = get_value(temp);
+        update(temp);
+        return root->right;
+    }
+    Node* res = get_copy(root);
+    res->left = get_head(res->left);
+    update(res);
+    return res;
+}
+
+Node* head(Node* root) {
+    Node* head = get_head(root->left);
+    Node* head_root = new Node(0);
+    head_root->sum = (root->sum - get_sum(temp) + MOD) % MOD;
+    head_root->left = head;
+    return head_root;
+}
+
+void headQuery(std::vector<Node*>& versions, int version) {
+    Node* res = head(versions[version - 1]);
+    output << get_sum(temp) << std::endl;
+    output << get_sum(res) << std::endl;
+    versions.push_back(temp);
+    versions.push_back(res);
+}
+
+Node* get_tail(Node* root) {
+    if (!root->right) {
+        temp = get_copy(root);
+        temp->left = new Node(get_value(temp));
+        temp->sum = get_value(temp);
+        update(temp);
+        return root->left;
+    }
+    Node* res = get_copy(root);
+    res->right = get_tail(res->right);
+    update(res);
+    return res;
+}
+
+Node* tail(Node* root) {
+    Node* tail = get_tail(root->left);
+    Node* tail_root = new Node(0);
+    tail_root->sum = (root->sum - get_sum(temp) + MOD) % MOD;
+    tail_root->left = tail;
+    return tail_root;
+}
+
+void tailQuery(std::vector<Node*>& versions, int version) {
+    Node* res = tail(versions[version - 1]);
+    output << get_sum(res) << std::endl;
+    output << get_sum(temp) << std::endl;
+    versions.push_back(res);
+    versions.push_back(temp);
+}
+
+std::vector<Node*> build(int elements_count) {
+    std::vector<Node*> versions;
+    for (int i = 0; i < elements_count; ++i) {
+        int value;
+        std::cin >> value;
+        Node* root = new Node(value);
+        root->left = new Node(value);
+        versions.push_back(root);
+    }
+    return versions;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    input.tie(nullptr);
+    output.tie(nullptr);
+    int elements_count;
+    input >> elements_count;
+    std::vector<Node*> versions = build(elements_count);
+    input >> queries_count;
+    for (query = 0; query < queries_count; ++query) {
+        std::string command;
+        int version;
+        input >> command >> version;
+        if (command == "merge") {
+            mergeQuery(versions, version);
+            continue;
+        }
+        if (command == "head") {
+            headQuery(versions, version);
+            continue;
+        }
+        tailQuery(versions, version);
+    }
+    return 0;
+}
+

@@ -1,0 +1,103 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+
+std::istream& input = std::cin;
+std::ostream& output = std::cout;
+
+class Query {
+public:
+    int count;
+    int from;
+    int to;
+    int right_index;
+    Query();
+    Query(int count, int from, int right_index);
+};
+
+Query::Query() {
+    input >> count >> from >> to;
+    from = from - 1;
+    to = to - 1;
+    right_index = from + count - 1;
+}
+
+Query::Query(int from, int count, int right_index) {
+    this->count = count;
+    this->from = from;
+    this->right_index = right_index;
+}
+
+std::vector<std::vector<int>> last_queries(2, std::vector<int>(100001));
+std::vector<Query*> queries(250);
+std::vector<int> result(100001);
+std::vector<int> block_result(100001);
+int elements_count, queries_count;
+bool help = false;
+
+Query* range_searching(int card, int length) {
+    int from = card;
+    int right_border = elements_count - 1;
+    int count = elements_count - from;
+    for (int query_i = 0; query_i < length; ++query_i) {
+        Query* cur_query = queries[query_i];
+        if (from - cur_query->from >= 0 && from - cur_query->right_index <= 0) {
+            int difference = from + count - cur_query->right_index - 1;
+            from += cur_query->to - cur_query->from;
+            if (difference > 0) {
+                count = count - difference;
+                right_border = right_border - difference;
+            }
+        } else if (cur_query->from - from >= 0 && cur_query->from <= from + count) {
+            const int difference = from + count - cur_query->from;
+            count = count - difference;
+            right_border = right_border - difference;
+        }
+    }
+    return new Query(from, count, right_border);
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    input.tie(nullptr);
+    output.tie(nullptr);
+    input >> elements_count >> queries_count;
+    int sqrt_size = static_cast<int>(sqrt(queries_count));
+
+    for (int i = 0; i < elements_count; ++i) {
+        last_queries[0][i] = 1;
+        result[i] = i;
+    }
+
+    for (int query = 0 ; query < queries_count; ) {
+        int length = std::min(sqrt_size, queries_count - query);
+        for (int i = 0; i < length; ++i) {
+            queries[i] = new Query();
+        }
+        for (int card = 0; card < elements_count; ++card) {
+            if (!last_queries[help][card])
+                continue;
+            Query* to_change = range_searching(card, length);
+            for (int i = 0; i + card <= to_change->right_index; ++i) {
+                last_queries[!help][to_change->from + i] += last_queries[help][i + card];
+                last_queries[help][i + card] = 0;
+                block_result[i + card] = to_change->from + i;
+            }
+            card = to_change->right_index;
+        }
+        for (int i = 0; i < elements_count; ++i) {
+            int card = result[i];
+            result[i] = block_result[card];
+        }
+        help = !help;
+        query += length;
+    }
+
+    for (int i = 0; i < elements_count; ++i) {
+        output << result[i] + 1 << ' ';
+    }
+
+    return 0;
+}

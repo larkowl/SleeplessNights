@@ -1,0 +1,118 @@
+#include <iostream>
+#include <vector>
+
+const int MAXINT = 1000000000;
+
+// Structure that stores initial values of number of houses and number of stations
+struct DeputiesInformation {
+    int houses;
+    int stations;
+};
+
+// Structure that stores minimal sum of distances and the sequence of coordinates of houses that form the optimal partition.
+struct OptimalArrangement {
+    int minimalDistance;
+    std::vector<int> stationsCoordinates;
+};
+
+DeputiesInformation readInput(std::istream& input = std::cin) {
+
+    int houses, stations;
+    input >> houses >> stations;
+    DeputiesInformation deputiesInformation;
+    deputiesInformation.houses = houses;
+    deputiesInformation.stations = stations;
+    return deputiesInformation;
+}
+
+std::vector<int> readCoordinates(const DeputiesInformation& deputiesInformation, std::istream& input = std::cin) {
+
+    std::vector<int> housesCoordinates(deputiesInformation.houses);
+    for (int i = 0; i < housesCoordinates.size(); ++i) {
+        input >> housesCoordinates[i];
+    }
+    return housesCoordinates;
+}
+
+std::vector<int> partitionRecovery(const DeputiesInformation& deputiesInformation, const std::vector<int>& housesCoordinates,
+        const std::vector<std::vector<int>>& stationsArrangement) {
+
+    int prefixLength = deputiesInformation.houses;
+    int stationsCount = deputiesInformation.stations;
+    std::vector<int> houseNumbers, stationsCoordinates;
+    while (stationsCount > 0) {
+        int segmentStart = stationsArrangement[prefixLength][stationsCount] + 1;
+        int segmentMiddle = (prefixLength - stationsArrangement[prefixLength][stationsCount]) / 2;
+        houseNumbers.push_back(segmentStart + segmentMiddle);
+        prefixLength = stationsArrangement[prefixLength][stationsCount];
+        stationsCount--;
+    }
+
+    const int lastHouse = static_cast<int>(houseNumbers.size() - 1);
+    for (int i = lastHouse; i >= 0; --i) {
+        stationsCoordinates.push_back(housesCoordinates[houseNumbers[i] - 1]);
+    }
+
+    return stationsCoordinates;
+}
+
+OptimalArrangement findOptimalArrangement(const DeputiesInformation& deputiesInformation,
+        const std::vector<int>& housesCoordinates) {
+
+    // Resizing sets and assigns default values
+    std::vector<int> prefixSum(housesCoordinates.size() + 1, 0);
+    std::vector<std::vector<int>> precondition(deputiesInformation.houses + 1, std::vector<int>(deputiesInformation.houses + 1, 0));
+    std::vector<std::vector<int>> stationsArrangement(deputiesInformation.houses + 1, std::vector<int>(deputiesInformation.stations + 1, 0));
+    std::vector<std::vector<int>> dynamics(deputiesInformation.houses + 1, std::vector<int>(deputiesInformation.stations + 1, 0));
+
+    for (int i = 1; i < prefixSum.size(); ++i) {
+        prefixSum[i] = prefixSum[i - 1] + housesCoordinates[i - 1];
+    }
+
+    // Precalculates the sum of distances to the nearest station at each sub-section
+    for (int length = 1; length < housesCoordinates.size() + 1; ++length) {
+        for (int start = 1; start < housesCoordinates.size() - length + 2; ++start) {
+            const int end = start + length - 1;
+            const int middle = start + (end - start) / 2;
+            precondition[start][end] = housesCoordinates[middle - 1] * (middle - start) - prefixSum[middle - 1] + prefixSum[start - 1];
+            precondition[start][end] -= housesCoordinates[middle - 1] * (end - middle) - prefixSum[end] + prefixSum[middle];
+        }
+    }
+
+    for (int i = 1; i <= deputiesInformation.houses; ++i) {
+        dynamics[i][1] = precondition[1][i];
+    }
+
+    for (int prefix = 2; prefix <= deputiesInformation.houses; ++prefix) {
+        for (int j = 2; j <= deputiesInformation.stations; ++j) {
+            dynamics[prefix][j] = MAXINT;
+            for (int split = 1; split < prefix; ++split) {
+                if (dynamics[split][j - 1] + precondition[split + 1][prefix] < dynamics[prefix][j]) {
+                    dynamics[prefix][j] = dynamics[split][j - 1] + precondition[split + 1][prefix];
+                    stationsArrangement[prefix][j] = split;
+                }
+            }
+        }
+    }
+
+    OptimalArrangement optimalArrangement;
+    optimalArrangement.minimalDistance = dynamics[deputiesInformation.houses][deputiesInformation.stations];
+    optimalArrangement.stationsCoordinates = partitionRecovery(deputiesInformation, housesCoordinates, stationsArrangement);
+    return optimalArrangement;
+}
+
+void printAnswer(const OptimalArrangement& optimalArrangement, std::ostream& output = std::cout) {
+
+    output << optimalArrangement.minimalDistance << std::endl;
+    for (int i = 0; i < optimalArrangement.stationsCoordinates.size(); ++i) {
+        output << optimalArrangement.stationsCoordinates[i] << ' ';
+    }
+}
+
+int main() {
+    const DeputiesInformation deputiesInformation = readInput();
+    const std::vector<int> housesCoordinates = readCoordinates(deputiesInformation);
+    const OptimalArrangement optimalArrangement = findOptimalArrangement(deputiesInformation, housesCoordinates);
+    printAnswer(optimalArrangement);
+    return 0;
+}

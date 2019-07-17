@@ -1,0 +1,73 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+
+int InputNumber() {
+    int number;
+    std::cin >> number;
+    return number;
+}
+
+int * InputArray(const int number) {
+    int * set = new int[number];
+    for (int i = 0; i < number; ++i) {
+        std::cin >> set[i];
+    }
+    return set;
+}
+
+long long BinPoisk(long long number, long long *set, int start, int end, const int cap) {
+    if (start > end) {
+        return 0;
+    }
+    int middle = (start + end) / 2;
+    if (number + set[middle] <= cap) {
+        return middle - start + 1 + BinPoisk(number, set, middle + 1, end, cap);
+    }
+    return BinPoisk(number, set, start, middle - 1, cap);
+}
+
+long long int * BruteForce(int start, int size, const int * set) {
+    long long int * array = new long long int[(1 << size)];
+    for (int i = 0; i < (1 << size); ++i) {
+        long long int sum = 0;
+        for (int j = 0; j < size; ++j) {
+            if (i & (1 << j)) {
+                sum += set[j + start];
+            }
+        }
+        array[i] = sum;
+    }
+    return array;
+}
+
+long long Solution(const int number, const int capacity, const int * set) {
+    long long int * first = BruteForce(0, number / 2, set);
+    long long int * second = BruteForce(number / 2, number - number / 2, set);
+
+    int first_size = (1 << (number / 2));
+    int second_size = (1 << (number - number / 2));
+
+    std::sort(second, second + second_size);
+
+    long long int result = 0;
+
+    for (int i = 0; i < first_size; ++i) {
+        result += BinPoisk(first[i], second, 0, second_size - 1, capacity);
+    }
+    return result;
+}
+
+void PrintRes(const int result) {
+    std::cout << result;
+}
+
+int main() {
+    const int number = InputNumber();
+    const int * set = InputArray(number);
+    const int capacity = InputNumber();
+    const int result = Solution(number, capacity, set);
+    PrintRes(result);
+}

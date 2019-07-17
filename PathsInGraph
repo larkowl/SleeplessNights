@@ -1,0 +1,106 @@
+// The number of paths of fixed length in the graph //
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+
+struct Information {
+    int varN;
+    int varM;
+    int varK;
+    Information(int ap, int bp, int cp) {
+        varN = ap, varM = bp, varK = cp;
+    }
+};
+
+Information readInput(std::istream &input = std::cin) {
+    int av, bv, cv;
+    input >> av >> bv >> cv;
+    Information info = Information(av, bv, cv);
+    return info;
+}
+
+void readEdges(Information const& info, std::vector<std::vector<long long int>>& edges,
+        std::istream &input = std::cin) {
+    for (int i = 0; i < info.varM; ++i) {
+        int start, end;
+        input >> start >> end;
+        ++edges[start - 1][end - 1];
+    }
+}
+
+void Multiplication(int size, std::vector<std::vector<long long>>& temp,
+        std::vector<std::vector<long long>>& vec1t,
+        std::vector<std::vector<long long>>& vec2t) {
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            for (int p = 0; p < size; ++p) {
+                temp[i][j] += (vec1t[i][p] * vec2t[p][j])
+                        %(1000000000 + 7);
+            }
+        }
+    }
+
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            vec1t[i][j] = temp[i][j] % (1000000000 + 7);
+            temp[i][j] = 0;
+        }
+    }
+}
+
+long long Solving(Information const& info,
+        std::vector<std::vector<long long>>& edges) {
+    std::vector<std::vector<long long>>
+    result (info.varN, std::vector<long long> (info.varN, 0)),
+    temp(info.varN, std::vector<long long> (info.varN, 0));
+    if (info.varK == 0) {
+        return 1;
+    }
+    int power = info.varK;
+    bool check = true;
+    while (power) {
+        if (power & 1) {
+            if (check) {
+                for (int i = 0; i < info.varN; ++i) {
+                    for (int j = 0; j < info.varN; ++j) {
+                        result[i][j] = edges[i][j];
+                    }
+                }
+                check = false;
+                --power;
+                continue;
+            }
+            Multiplication(info.varN, temp, result, edges);
+            --power;
+        } else {
+            Multiplication(info.varN, temp, edges, edges);
+            power >>= 1;
+        }
+    }
+
+    long long int answer = 0;
+    for (int i = 0; i < info.varN; ++i) {
+        answer = (answer + result[0][i]) % (1000000000 + 7);
+    }
+    return answer;
+}
+
+void printAnswer(long long int answer, std::ostream& output = std::cout) {
+    output << answer;
+}
+
+int main()
+{
+    std::ios_base::sync_with_stdio(0);
+    std::cin.tie(nullptr);
+    Information info = readInput();
+    std::vector<std::vector<long long int>> edges(info.varN,
+            std::vector<long long int> (info.varN, 0));
+    readEdges(info, edges);
+    long long int answer = Solving(info, edges);
+    printAnswer(answer);
+}
+

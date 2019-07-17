@@ -1,0 +1,128 @@
+#include<math.h>
+#include<vector>
+#include<stdio.h>
+#include<iostream>
+#include<algorithm>
+
+std::istream& input = std::cin;
+std::ostream& output = std::cout;
+
+class PersistentStack {
+    PersistentStack* previous;
+
+public:
+    int value;
+
+    explicit PersistentStack(int value = 0, PersistentStack* previous = nullptr) {
+        this->value = value;
+        this->previous = previous;
+    }
+
+    PersistentStack* push(int value) {
+        auto* stack = new PersistentStack(value, this);
+        return stack;
+    }
+
+    PersistentStack* pop() {
+        return previous;
+    }
+};
+
+class PersistentQueue {
+    int main_size, check_size;
+    PersistentStack* enqueueStack, *dequeueStack, *enqueueStackCopy, *helpDequeueStack;
+
+    void helpStacksFilling() {
+        check_size = main_size;
+        helpDequeueStack = new PersistentStack();
+        enqueueStackCopy = enqueueStack;
+    }
+
+    void recopy() {
+        --check_size;
+        int value = enqueueStackCopy->value;
+        helpDequeueStack = helpDequeueStack->push(value);
+        enqueueStackCopy = enqueueStackCopy->pop();
+    }
+
+    void dequeueStackFilling() {
+        dequeueStack = helpDequeueStack;
+        check_size = -1;
+        helpDequeueStack = new PersistentStack();
+        enqueueStackCopy = new PersistentStack();
+    }
+
+    PersistentQueue* morph() {
+        if (check_size == -1) {
+            helpStacksFilling();
+        }
+        if (check_size > 0) {
+            recopy();
+        }
+        if (check_size == 0) {
+            dequeueStackFilling();
+        }
+        return new PersistentQueue(main_size, check_size,
+                enqueueStack, dequeueStack, enqueueStackCopy, helpDequeueStack);
+    }
+    
+public:
+    explicit PersistentQueue(int main_size = 0, int check_size = -1,
+                    PersistentStack* enqueueStack = new PersistentStack(),
+                    PersistentStack* dequeueStack = new PersistentStack(),
+                    PersistentStack* enqueueStackCopy = new PersistentStack(),
+                    PersistentStack* helpDequeueStack = new PersistentStack()) {
+
+        this->main_size = main_size;
+        this->check_size = check_size;
+        this->enqueueStack = enqueueStack;
+        this->dequeueStack = dequeueStack;
+        this->enqueueStackCopy = enqueueStackCopy;
+        this->helpDequeueStack = helpDequeueStack;
+    }
+
+    PersistentQueue* enqueue(int value) {
+        int new_size = main_size + 1;
+        PersistentStack* stack = enqueueStack->push(value);
+        auto * queue = new PersistentQueue(new_size, check_size,
+                stack, dequeueStack, enqueueStackCopy, helpDequeueStack);
+        queue = queue->morph();
+        return queue;
+    }
+
+    PersistentQueue* dequeue() {
+        output << dequeueStack->value << std::endl;
+        int new_size = main_size - 1;
+        int new_check_size = check_size;
+        if (check_size != -1) {
+            --new_check_size;
+        }
+        PersistentStack* stack = dequeueStack->pop();
+        auto * queue = new PersistentQueue(new_size, new_check_size,
+                enqueueStack, stack, enqueueStackCopy, helpDequeueStack);
+        queue = queue->morph();
+        return queue;
+    }
+};
+
+int main()
+{
+    int requests;
+    input >> requests;
+    std::vector<PersistentQueue*> versions(requests + 1);
+    for (int in = 0; in < requests + 1; ++in) {
+        int variant, version, value;
+        if (!in) {
+            versions[0] = new PersistentQueue();
+            continue;
+        }
+        input >> variant >> version;
+        if (variant == 1) {
+            input >> value;
+            versions[in] = versions[version]->enqueue(value);
+        } else {
+            versions[in] = versions[version]->dequeue();
+        }
+    }
+    return 0;
+}

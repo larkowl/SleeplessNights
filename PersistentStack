@@ -1,0 +1,47 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <utility>
+
+int readItem(std::istream &input = std::cin) {
+    int amount;
+    input >> amount;
+    return amount;
+}
+
+long long resultOfTheGame(int amount, std::istream &input = std::cin) {
+    std::vector<std::pair<long long, long long>> persistentStack (amount + 1, std::make_pair(0, 0));
+    std::vector<long long> result (amount + 1, 0);
+    for (int i = 1; i <= amount; ++i) {
+        int prev, weight;
+        input >> prev >> weight;
+        if (weight) {
+            persistentStack[i] = std::make_pair(weight, prev);
+            result[i] = result[prev] + weight;
+        } else {
+            persistentStack[i] = std::make_pair(persistentStack[persistentStack[prev].second].first,
+                    persistentStack[persistentStack[prev].second].second);
+            result[i] = result[persistentStack[i].second] + persistentStack[i].first;
+        }
+    }
+
+    long long ans = 0;
+    for (int i = 1; i <= amount; ++i) {
+        ans += result[i];
+    }
+
+    return ans;
+}
+
+void printAns(long long ans, std::ostream& output = std::cout) {
+    output << ans;
+}
+
+int main()
+{
+    std::ios_base::sync_with_stdio(0);
+    std::cin.tie(nullptr);
+    int amount = readItem();
+    long long ans = resultOfTheGame(amount);
+    printAns(ans);
+}
